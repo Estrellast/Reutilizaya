@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>ReutilizaYa</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      background: #e6f2e6;
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+      color: #2e7d32;
+    }
+    form {
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      max-width: 500px;
+      margin: auto;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    input, textarea {
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      background-color: #4caf50;
+      color: white;
+      padding: 10px;
+      border: none;
+      width: 100%;
+      border-radius: 5px;
+      font-weight: bold;
+    }
+    .item {
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      margin-top: 15px;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+    }
+    .item img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+    .map {
+      height: 200px;
+      margin-top: 10px;
+      border-radius: 8px;
+    }
+    #selectMap {
+      height: 200px;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+    footer {
+      text-align: center;
+      margin-top: 40px;
+      font-size: 0.9em;
+      color: #666;
+    }
+    footer span {
+      color: #2e7d32;
+      font-weight: bold;
+    }
+    .mensaje {
+      background: #d4f6ec;
+      border: 1px solid #a1e6d4;
+      color: #0b665b;
+      padding: 10px;
+      border-radius: 5px;
+      max-width: 500px;
+      margin: 10px auto 20px;
+      text-align: center;
+      font-weight: bold;
+    }
+    .whatsapp-btn {
+      display: inline-block;
+      margin-top: 10px;
+      background: #25D366;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 5px;
+      text-decoration: none;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>♻️ ReutilizaYa</h1>
+
+  <div class="mensaje">
+    Si encuentras algo útil, no dejes que se pierda. ¡Recógelo y compártelo!
+  </div>
+
+  <form id="itemForm">
+    <input type="text" id="title" placeholder="Título del objeto" required />
+    <textarea id="description" placeholder="Descripción" required></textarea>
+    <input type="tel" id="whatsapp" placeholder="Tu número de WhatsApp (opcional)" />
+    <input type="file" id="image" accept="image/*" required />
+    <div id="selectMap"></div>
+    <button type="submit">Compartir objeto</button>
+  </form>
+
+  <div id="itemsList"></div>
+
+  <footer>
+    Creado por <span>Francisco Cabello</span> · Córdoba, España
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script>
+    let selectedLatLng = null;
+
+    const form = document.getElementById('itemForm');
+    const list = document.getElementById('itemsList');
+
+    const map = L.map('selectMap').setView([37.8882, -4.7794], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    let marker = null;
+    map.on('click', function (e) {
+      selectedLatLng = e.latlng;
+      if (marker) {
+        marker.setLatLng(e.latlng);
+      } else {
+        marker = L.marker(e.latlng).addTo(map);
+      }
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const items = JSON.parse(localStorage.getItem('objetos')) || [];
+      items.forEach(item => mostrarObjeto(item));
+    });
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      const title = document.getElementById('title').value;
+      const desc = document.getElementById('description').value;
+      const number = document.getElementById('whatsapp').value.trim();
+      const file = document.getElementById('image').files[0];
+
+      if (!selectedLatLng) {
+        alert('Haz clic en el mapa para indicar la ubicación del objeto.');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function () {
+        const item = {
+          title: title,
+          description: desc,
+          image: reader.result,
+          lat: selectedLatLng.lat,
+          lng: selectedLatLng.lng,
+          whatsapp: number
+        };
+
+        guardarObjeto(item);
+        mostrarObjeto(item);
+        form.reset();
+        selectedLatLng = null;
+        if (marker) {
+          map.removeLayer(marker);
+          marker = null;
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    function mostrarObjeto(obj) {
+      const div = document.createElement('div');
+      div.className = 'item';
+
+      let whatsappLink = '';
+      if (obj.whatsapp) {
+        const cleanNumber = obj.whatsapp.replace(/\D/g, '');
+        whatsappLink = `<a class="whatsapp-btn" target="_blank" href="https://wa.me/${cleanNumber}">Contactar por WhatsApp</a>`;
+      }
+
+      div.innerHTML = `
+        <h3>${obj.title}</h3>
+        <img src="${obj.image}" alt="Objeto compartido" />
+        <p>${obj.description}</p>
+        ${whatsappLink}
+        <div class="map" id="map-${obj.lat}-${obj.lng}"></div>
+      `;
+      list.prepend(div);
+
+      const objMap = L.map(`map-${obj.lat}-${obj.lng}`, {
+        attributionControl: false,
+        zoomControl: false,
+        dragging: false,
+        scrollWheelZoom: false
+      }).setView([obj.lat, obj.lng], 13);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(objMap);
+      L.marker([obj.lat, obj.lng]).addTo(objMap);
+    }
+
+    function guardarObjeto(obj) {
+      const items = JSON.parse(localStorage.getItem('objetos')) || [];
+      items.push(obj);
+      localStorage.setItem('objetos', JSON.stringify(items));
+    }
+  </script>
+</body>
+</html>
