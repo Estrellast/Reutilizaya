@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
@@ -70,43 +70,21 @@
       <button class="btn-verde" onclick="confirmarCiudad()">Entrar</button>
     </div>
   </div>
+
   <script>
     function confirmarCiudad() {
       const select = document.getElementById("ciudad");
       const ciudad = select.value;
       const lat = select.options[select.selectedIndex].getAttribute("data-lat");
       const lng = select.options[select.selectedIndex].getAttribute("data-lng");
+
       if (!ciudad || !lat || !lng) {
         alert("Por favor, selecciona una ciudad.");
         return;
       }
+
       window.location.href = `app.html?ciudad=${encodeURIComponent(ciudad)}&lat=${lat}&lng=${lng}`;
     }
   </script>
 </body>
 </html>
-
-
-Archivo: service-worker.js
----------------------------
-self.addEventListener('install', function(event) {
-  event.waitUntil(
-    caches.open('reutilizaya-v1').then(function(cache) {
-      return cache.addAll([
-        '/',
-        '/index.html',
-        '/app.html',
-        '/entrada.png'
-      ]);
-    })
-  );
-});
-
-self.addEventListener('fetch', function(event) {
-  event.respondWith(
-    caches.match(event.request).then(function(response) {
-      return response || fetch(event.request);
-    })
-  );
-});
-
